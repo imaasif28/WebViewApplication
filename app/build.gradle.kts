@@ -52,4 +52,5 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
     implementation("com.google.android.play:review:2.0.1")
     implementation("com.google.android.play:review-ktx:2.0.1")
+    implementation ("com.google.android.recaptcha:recaptcha:18.2.1")
 }

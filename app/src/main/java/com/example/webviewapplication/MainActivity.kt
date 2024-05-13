@@ -2,6 +2,7 @@ package com.example.webviewapplication
 
 import Req
 import Res
+import android.content.Intent
 import android.os.Binder
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -12,8 +13,13 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import com.example.webviewapplication.databinding.ActivityMainBinding
 import com.google.android.play.core.review.ReviewManagerFactory
+import com.google.android.recaptcha.Recaptcha
+import com.google.android.recaptcha.RecaptchaAction
+import com.google.android.recaptcha.RecaptchaClient
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Call
@@ -27,54 +33,31 @@ import retrofit2.http.POST
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var recaptchaClient: RecaptchaClient
     lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        requestInAppReview()
+//        requestInAppReview()
+//        initializeRecaptchaClient()
         val apiService = RetrofitClient.instance
-        val webView = binding.webView
-        webView.let {
-            it.settings.javaScriptEnabled = true
-            it.settings.domStorageEnabled = true
-            it.settings.cacheMode = WebSettings.LOAD_NO_CACHE
-            it.settings.loadsImagesAutomatically = true
-            it.settings.javaScriptCanOpenWindowsAutomatically = true
-            it.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            it.settings.loadWithOverviewMode = true
-            it.settings.allowFileAccess = true
-            it.settings.mediaPlaybackRequiresUserGesture = false
-            it.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-//            it.webChromeClient = ChromeClient()
 
-        }
-        webView.webViewClient = WebViewClient()
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                // Load URL within WebView
-                view?.loadUrl(request?.url.toString())
-                return true
-            }
-        }
         binding.txtWeightValue.maxValue = 300
         binding.txtWeightValue.minValue = 10
 
         binding.txtWeightValue.apply {
             setOnValueChangedListener { numberPicker, i, i2 ->
-
-                println(
-                    value
-                )
-
+                println(value)
             }
         }
 
 
         binding.btn.setOnClickListener {
-            requestInAppReview()
-
+            binding.progessBar.visibility = View.VISIBLE
+//            executeLoginAction()
+//            requestInAppReview()
             val call = apiService.getExampleData(
                 Req(
                     apiKey = "121DDCD83E8A4FBA8F642DF36490383F",
@@ -83,40 +66,39 @@ class MainActivity : AppCompatActivity() {
                 )
             )
 
-           /* call.enqueue(object : Callback<Res> {
+            call.enqueue(object : Callback<Res> {
                 override fun onResponse(
                     call: Call<Res>,
                     response: Response<Res>
                 ) {
                     if (response.isSuccessful) {
+                        binding.progessBar.visibility = View.GONE
                         val exampleResponse = response.body()
 
-                        Toast.makeText(
-                            this@MainActivity,
-                            exampleResponse?.redirectUrl,
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        exampleResponse?.redirectUrl?.let { it1 -> binding.webView.loadUrl(it1) }
+                        exampleResponse?.redirectUrl?.let { it1 ->
+                            val intent = Intent(this@MainActivity, WebActivity::class.java)
+                            intent.putExtra("URL", it1)
+                            startActivity(intent)
+                        }
                         // Handle successful response here
                     } else {
                         // Handle unsuccessful response here
-
+                        binding.progessBar.visibility = View.GONE
                         Toast.makeText(
                             this@MainActivity,
                             "fail",
                             Toast.LENGTH_SHORT
                         ).show()
-
                     }
                 }
 
                 override fun onFailure(call: Call<Res>, t: Throwable) {
                     // Handle failure here
                 }
-            })*/
+            })
         }
     }
+
     private fun requestInAppReview() {
         val reviewManager = ReviewManagerFactory.create(this)
         val request = reviewManager.requestReviewFlow()
@@ -138,6 +120,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun initializeRecaptchaClient() {
+        lifecycleScope.launch {
+            Recaptcha.getClient(application, "6LeMj9YpAAAAAOkdllliLGxEdWrsgr4p2DhteOs7")
+                .onSuccess { client ->
+                    showToast("initializeRecaptchaClient success")
+                    recaptchaClient = client
+                }
+                .onFailure { exception ->
+                    showToast(
+                        "initializeRecaptchaClient failure exception: ${exception.message}",
+                    )
+                }
+        }
+    }
+
+    private fun showToast(msg: String) {
+        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+        println(msg)
+    }
+
+    private fun executeLoginAction() {
+        lifecycleScope.launch {
+            recaptchaClient
+                .execute(RecaptchaAction.LOGIN)
+                .onSuccess { token ->
+                    if (token.isNotBlank()) {
+                        showToast("Ready for login >> Token $token")
+                    } else {
+                        showToast("Not ready for login >> Token $token")
+                    }
+                }
+                .onFailure { exception ->
+                    showToast("executeLoginAction >> failure >> Exception :${exception.message}")
+                }
+        }
+    }
 }
 
 interface ApiService {
