@@ -3,16 +3,20 @@ package com.example.webviewapplication
 import Req
 import Res
 import android.content.Intent
-import android.os.Binder
-import androidx.appcompat.app.AppCompatActivity
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.DrawableContainer
+import android.graphics.drawable.DrawableContainer.DrawableContainerState
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.os.Build
 import android.os.Bundle
-import android.util.Base64
 import android.view.View
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.webviewapplication.databinding.ActivityMainBinding
 import com.google.android.play.core.review.ReviewManagerFactory
@@ -28,7 +32,6 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
-import retrofit2.http.GET
 import retrofit2.http.POST
 
 class MainActivity : AppCompatActivity() {
@@ -36,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recaptchaClient: RecaptchaClient
     lateinit var binding: ActivityMainBinding
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -54,6 +58,12 @@ class MainActivity : AppCompatActivity() {
         }
 
 
+      /*  binding.btn.setOnClickListener {
+            // Load the selector drawable from XML
+            val stateListDrawable = stateListDrawable()
+            // Set the modified selector drawable to a view
+            binding.mobileNum.background = stateListDrawable
+        }*/
         binding.btn.setOnClickListener {
             binding.progessBar.visibility = View.VISIBLE
 //            executeLoginAction()
@@ -97,6 +107,30 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         }
+    }
+
+    private fun stateListDrawable(colorStroke: Int, bgColor: Int,): StateListDrawable {
+        val stateListDrawable = ContextCompat.getDrawable(
+            this,
+            R.drawable.vital_dotted_bg_pink
+        ) as StateListDrawable
+        // Access the single item in the StateListDrawable
+        val drawableContainerState = stateListDrawable.constantState as DrawableContainerState
+        val children = drawableContainerState.children
+
+        if (children.isNotEmpty() && children[0] is GradientDrawable) {
+            val shapeDrawable = children[0] as GradientDrawable
+            // Modify the drawable programmatically
+            shapeDrawable.color = ColorStateList.valueOf(getColor(R.color.colorVitalBeigeStroke))
+
+            shapeDrawable.setStroke(
+                1 * resources.displayMetrics.density.toInt(), // width in dp
+                ContextCompat.getColor(this, R.color.colorVitalBeige), // new color
+                5 * resources.displayMetrics.density, // new dash width in dp
+                5 * resources.displayMetrics.density // new dash gap in dp
+            )
+        }
+        return stateListDrawable
     }
 
     private fun requestInAppReview() {
@@ -181,5 +215,16 @@ object RetrofitClient {
             .build()
 
         retrofit.create(ApiService::class.java)
+    }
+}
+
+fun Drawable.setStroke(colorStroke: Int, bgColor: Int, width: Int, view: View) {
+    val dcs = view.background.constantState as DrawableContainerState?
+    val drawableItems = dcs!!.children
+    val gradientDrawableChecked = drawableItems[0] as GradientDrawable // item 1
+    gradientDrawableChecked.setColor(bgColor)
+    (this as? GradientDrawable)?.apply {
+        mutate()
+        gradientDrawableChecked.setStroke(width, colorStroke, 3f, 3f)
     }
 }

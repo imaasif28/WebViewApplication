@@ -2,4 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="colorVitalSkyBlue">#AEF2FF</color>
+    <color name="colorVitalGreen">#92C63F</color>
+    <color name="colorVitalBeige">#FCBD08</color>
+    <color name="colorVitalBeigeStroke">#4DFCBD08</color>
+    <color name="colorVitalAccent">#F05123</color>
+    <color name="colorVitalsPink">#FDB4BC</color>
 </resources>
