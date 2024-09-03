@@ -36,6 +36,17 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    packagingOptions {
+          resources.excludes.add("META-INF/DEPENDENCIES")
+          resources.excludes.add("META-INF/LICENSE")
+          resources.excludes.add("META-INF/LICENSE.txt")
+          resources.excludes.add("META-INF/license.txt")
+          resources.excludes.add("META-INF/NOTICE")
+          resources.excludes.add("META-INF/NOTICE.txt")
+          resources.excludes.add("META-INF/notice.txt")
+          resources.excludes.add("META-INF/ASL2.0")
+          resources.excludes.add("META-INF/*.kotlin_module")
+    }
 }
 
 dependencies {
@@ -53,4 +64,14 @@ dependencies {
     implementation("com.google.android.play:review:2.0.1")
     implementation("com.google.android.play:review-ktx:2.0.1")
     implementation ("com.google.android.recaptcha:recaptcha:18.2.1")
+
+    implementation ("com.google.api-client:google-api-client-android:1.33.0") // For Google API client
+    implementation ("com.google.auth:google-auth-library-oauth2-http:1.10.0") // For Google Auth library
+//    implementation ("com.google.code.gson:gson:2.10") // For JSON parsing
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3") // For coroutines
+
+    //bio-metric
+    implementation ("androidx.biometric:biometric:1.2.0-alpha01")
+
+
 }

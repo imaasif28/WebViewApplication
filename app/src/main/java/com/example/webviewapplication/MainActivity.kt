@@ -4,18 +4,18 @@ import Req
 import Res
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.DrawableContainer
 import android.graphics.drawable.DrawableContainer.DrawableContainerState
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.webviewapplication.databinding.ActivityMainBinding
@@ -23,6 +23,9 @@ import com.google.android.play.core.review.ReviewManagerFactory
 import com.google.android.recaptcha.Recaptcha
 import com.google.android.recaptcha.RecaptchaAction
 import com.google.android.recaptcha.RecaptchaClient
+import com.google.auth.oauth2.GoogleCredentials
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -33,11 +36,14 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
+import java.io.InputStream
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var recaptchaClient: RecaptchaClient
     lateinit var binding: ActivityMainBinding
+    private lateinit var biometricPrompt: BiometricPrompt
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +52,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 //        requestInAppReview()
 //        initializeRecaptchaClient()
+        CoroutineScope(Dispatchers.IO).launch {
+            getAccessToken()
+        }
         val apiService = RetrofitClient.instance
 
         binding.txtWeightValue.maxValue = 300
@@ -56,14 +65,32 @@ class MainActivity : AppCompatActivity() {
                 println(value)
             }
         }
+        val executor = Executors.newSingleThreadExecutor()
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                // Handle authentication error
+            }
 
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                // Authentication succeeded, proceed with opening the app
+            }
 
-      /*  binding.btn.setOnClickListener {
-            // Load the selector drawable from XML
-            val stateListDrawable = stateListDrawable()
-            // Set the modified selector drawable to a view
-            binding.mobileNum.background = stateListDrawable
-        }*/
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                // Handle authentication failure
+            }
+        }
+
+        biometricPrompt = BiometricPrompt(this, executor, callback)
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Authenticate to open the app")
+            .setSubtitle("Use fingerprint for authentication")
+            .setNegativeButtonText("Cancel")
+            .build()
+        // Trigger biometric prompt when needed
+//        biometricPrompt.authenticate(promptInfo)
         binding.btn.setOnClickListener {
             binding.progessBar.visibility = View.VISIBLE
 //            executeLoginAction()
@@ -84,21 +111,18 @@ class MainActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         binding.progessBar.visibility = View.GONE
                         val exampleResponse = response.body()
-
-                        exampleResponse?.redirectUrl?.let { it1 ->
-                            val intent = Intent(this@MainActivity, WebActivity::class.java)
-                            intent.putExtra("URL", it1)
-                            startActivity(intent)
-                        }
+                        if (exampleResponse?.responseCode == 404) toast(exampleResponse.msg.toString())
+                        else
+                            exampleResponse?.redirectUrl?.let { it1 ->
+                                val intent = Intent(this@MainActivity, WebActivity::class.java)
+                                intent.putExtra("URL", it1)
+                                startActivity(intent)
+                            }
                         // Handle successful response here
                     } else {
                         // Handle unsuccessful response here
                         binding.progessBar.visibility = View.GONE
-                        Toast.makeText(
-                            this@MainActivity,
-                            "fail",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        toast(response.errorBody()?.string() ?: "Unknown error")
                     }
                 }
 
@@ -109,7 +133,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun stateListDrawable(colorStroke: Int, bgColor: Int,): StateListDrawable {
+    private fun toast(response: String) {
+        Toast.makeText(
+            this@MainActivity,
+            response,
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun stateListDrawable(colorStroke: Int, bgColor: Int): StateListDrawable {
         val stateListDrawable = ContextCompat.getDrawable(
             this,
             R.drawable.vital_dotted_bg_pink
@@ -188,6 +220,24 @@ class MainActivity : AppCompatActivity() {
                 .onFailure { exception ->
                     showToast("executeLoginAction >> failure >> Exception :${exception.message}")
                 }
+        }
+    }
+
+    private suspend fun getAccessToken() {
+        try {/*
+            // Load the service account JSON key file
+            val inputStream: InputStream = resources.openRawResource(R.raw.service_account)
+            val googleCredentials = GoogleCredentials.fromStream(inputStream)
+                .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
+
+            googleCredentials.refreshIfExpired()
+            val accessToken = googleCredentials.accessToken.tokenValue
+
+            Log.d("AccessToken", "Access Token: $accessToken")
+            // Use the access token to make authenticated requests to FCM or other Google APIs
+*/
+        } catch (e: Exception) {
+            Log.e("AccessToken", "Error obtaining access token", e)
         }
     }
 }
