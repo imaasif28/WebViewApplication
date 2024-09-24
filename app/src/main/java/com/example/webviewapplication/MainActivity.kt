@@ -2,6 +2,7 @@ package com.example.webviewapplication
 
 import Req
 import Res
+import VerTenantRes
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
@@ -35,7 +36,9 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 import java.io.InputStream
 import java.util.concurrent.Executors
 
@@ -44,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recaptchaClient: RecaptchaClient
     lateinit var binding: ActivityMainBinding
     private lateinit var biometricPrompt: BiometricPrompt
+    private var apiKey: String? = ""
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,7 +96,7 @@ class MainActivity : AppCompatActivity() {
         // Trigger biometric prompt when needed
 //        biometricPrompt.authenticate(promptInfo)
         binding.btn.setOnClickListener {
-            binding.progessBar.visibility = View.VISIBLE
+            showLoader()
 //            executeLoginAction()
 //            requestInAppReview()
             val call = apiService.getExampleData(
@@ -114,9 +118,7 @@ class MainActivity : AppCompatActivity() {
                         if (exampleResponse?.responseCode == 404) toast(exampleResponse.msg.toString())
                         else
                             exampleResponse?.redirectUrl?.let { it1 ->
-                                val intent = Intent(this@MainActivity, WebActivity::class.java)
-                                intent.putExtra("URL", it1)
-                                startActivity(intent)
+                                openWebView(it1)
                             }
                         // Handle successful response here
                     } else {
@@ -131,6 +133,61 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         }
+
+        binding.btn1.setOnClickListener {
+            showLoader()
+            val call = apiService.verifyTenant(
+                "WWUvc052cVp0RXNCcWpRYVFWOGoyclo3QjRHKzR3WkROSFBTZjRXMHpZYXRjNVZmUU5LSFZGUldOd3VxWkR6N0pwUUpWV0ZDb2NYSDRoQy9SQ3MxSDF6Q1lDWCtkZFJPUkx1OXNtcGd4QlE9"
+            )
+
+            call.enqueue(object : Callback<VerTenantRes> {
+                override fun onResponse(
+                    call: Call<VerTenantRes>,
+                    response: Response<VerTenantRes>
+                ) {
+                    if (response.isSuccessful) {
+                        binding.progessBar.visibility = View.GONE
+                        val verTenantRes = response.body()
+                        when (verTenantRes?.responseCode) {
+                            200 -> verTenantRes.responseData?.tenantInfo?.let { it1 ->
+                                apiKey = it1.apiKey
+                                it1.apiKey?.let { it2 -> toast(it2) }
+                                println(apiKey)
+                            }
+
+                            else -> toast(verTenantRes?.msg ?: "Netowrk Issue")
+                        }
+                    } else {
+                        binding.progessBar.visibility = View.GONE
+                        toast(response.errorBody()?.string() ?: "Unknown error")
+                    }
+                }
+
+                override fun onFailure(call: Call<VerTenantRes>, t: Throwable) {
+                    // Handle failure here
+                    binding.progessBar.visibility = View.GONE
+                    toast(t.message.toString())
+                }
+            })
+        }
+
+        binding.btn1.setOnClickListener {
+            openWebView("https://uat-tenant.livlong.com/authVerify?PostData=NThrVkl6MDQ4UWlQVmVaVTA3MStNUGFKS0JUVGoxY3kwNHJMUzNKazRTdjBkTStHeHpDWTFOMUdkeWNoWWNlcG5RZU1kelhyRkRndGorNTgzL0lSR3ViY015QktZOXFtcEV4TXMzb3BXeEk9")
+        }
+
+        binding.btn2.setOnClickListener {
+            openWebView("https://uat-tenant.livlong.com/authVerify?PostData=WWUvc052cVp0RXNCcWpRYVFWOGoyclo3QjRHKzR3WkROSFBTZjRXMHpZYXRjNVZmUU5LSFZGUldOd3VxWkR6N0pwUUpWV0ZDb2NYSDRoQy9SQ3MxSDF6Q1lDWCtkZFJPUkx1OXNtcGd4QlE9")
+        }
+    }
+
+    private fun openWebView(it1: String) {
+        val intent = Intent(this@MainActivity, WebActivity::class.java)
+        intent.putExtra("URL", it1)
+        startActivity(intent)
+    }
+
+    private fun showLoader() {
+        binding.progessBar.visibility = View.VISIBLE
     }
 
     private fun toast(response: String) {
@@ -239,32 +296,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("AccessToken", "Error obtaining access token", e)
         }
-    }
-}
-
-interface ApiService {
-
-    @POST("Authentication.Web.Api/api/v2/Auth/verifyApiKey")
-    fun getExampleData(@Body body: Req): Call<Res> // Replace ExampleResponse with your actual response model
-}
-
-object RetrofitClient {
-
-    private const val BASE_URL = "https://uat-api.livlonginsurance.com/"
-    val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
-    val client = OkHttpClient.Builder().also {
-        it.addInterceptor(logging) // For logging purposes
-    }.build()
-    val instance: ApiService by lazy {
-        val retrofit = Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        retrofit.create(ApiService::class.java)
     }
 }
 

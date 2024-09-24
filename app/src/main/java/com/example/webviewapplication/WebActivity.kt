@@ -76,6 +76,8 @@ class WebActivity : AppCompatActivity() {
         ): Boolean {
             println("New shouldOverrideUrlLoading********************************${request.url}")
             view?.loadUrl(request.url.toString())
+            binding.progessBar.visibility = View.VISIBLE
+
             return handleUri(request.url)
         }
 
@@ -83,6 +85,7 @@ class WebActivity : AppCompatActivity() {
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
             println("Old shouldOverrideUrlLoading********************************$url")
                     view.loadUrl(url)
+            binding.progessBar.visibility = View.VISIBLE
             return handleUri(url)
         }
 
